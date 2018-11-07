@@ -1,7 +1,7 @@
 from lightai.core import *
 
-def get_img(row, color):
-    name = row['Id'] + f'_{color}.png'
+def get_img(row, color, sz):
+    name = row['Id'] + f'{sz}_{color}.png'
     img = cv2.imread(f'inputs/train/{name}')
     return img
 
@@ -12,7 +12,11 @@ def get_target(row):
     res[targets] = 1
     return res
 
-def tsfm(row):
-    green = get_img(row, 'green')
-    target = get_target(row)
-    return green, target
+class Tsfm:
+    def __init__(self, sz):
+        self.sz = sz
+
+    def __call__(self, row):
+        green = get_img(row, 'green', self.sz)
+        target = get_target(row)
+        return green, target
