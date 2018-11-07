@@ -8,7 +8,7 @@ def get_img(row, color):
 def get_target(row):
     targets = row['Target'].split()
     targets = [int(t) for t in targets]
-    res = np.zeros(28, dtype=np.uint8)
+    res = np.zeros(28, dtype=np.int32)
     res[targets] = 1
     return res
 
