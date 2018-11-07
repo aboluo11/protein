@@ -20,3 +20,11 @@ class Tsfm:
         green = get_img(row, 'green', self.sz)
         target = get_target(row)
         return green, target
+
+class TestTsfm:
+    def __init__(self, sz):
+        self.sz = sz
+
+    def __call__(self, row):
+        green = get_img(row, 'green', self.sz)
+        return green
