@@ -2,10 +2,14 @@ from lightai.core import *
 
 class Dataset:
     def __init__(self, df, fold, train, tsfm):
-        if train:
-            self.df = df[df['fold'] != fold]
+        if fold is not None:
+            if train:
+                self.df = df[df['fold'] != fold]
+            else:
+                self.df = df[df['fold'] == fold]
         else:
-            self.df = df[df['fold'] == fold]
+            # test
+            self.df = df
         self.tsfm = tsfm
 
     def __getitem__(self, idx):
