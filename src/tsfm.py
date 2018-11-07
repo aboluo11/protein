@@ -1,8 +1,8 @@
 from lightai.core import *
 
 def get_img(row, color, sz):
-    name = row['Id'] + f'{sz}_{color}.png'
-    img = cv2.imread(f'inputs/train/{name}')
+    name = row['Id'] + f'_{color}.png'
+    img = cv2.imread(f'inputs/{sz}_train/{name}')
     return img
 
 def get_target(row):
