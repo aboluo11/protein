@@ -10,7 +10,7 @@ class Evaluator:
     def __call__(self):
         losses = []
         with torch.no_grad():
-            for img, target in val_dl:
+            for img, target in self.val_dl:
                 img = img.cuda()
                 target = target.cuda()
                 predict = self.model(img)
