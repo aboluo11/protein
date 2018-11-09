@@ -7,6 +7,7 @@ def get_img(row, color, sz, train):
     else:
         img_path = f'inputs/{sz}_test/{name}'
     img = cv2.imread(img_path)
+    img = img.astype(np.float32)
     return img
 
 def get_target(row):
