@@ -14,6 +14,7 @@ class Evaluator:
                 img = img.cuda()
                 target = target.cuda()
                 predict = self.model(img)
+                predict = predict.float()
                 self.metric(predict, target)
                 losses.append(self.loss_fn(predict, target).mean(dim=1))
         loss = torch.cat(losses).mean().item()
