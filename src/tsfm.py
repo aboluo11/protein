@@ -1,12 +1,17 @@
 from lightai.core import *
 
-def get_img(row, color, sz, train):
-    name = row['Id'] + f'_{color}.png'
-    if train:
-        img_path = f'inputs/{sz}_train/{name}'
-    else:
-        img_path = f'inputs/{sz}_test/{name}'
-    img = cv2.imread(img_path)
+def get_img(row, sz, train):
+    colors = ['red', 'blue', 'green', 'yellow']
+    channels = []
+    for color in colors:
+        name = row['Id'] + f'_{color}.png'
+        if train:
+            img_path = f'inputs/{sz}_train/{name}'
+        else:
+            img_path = f'inputs/{sz}_test/{name}'
+        channel = cv2.imread(img_path, -1)
+        channels.append(channel)
+    img = np.stack(channels)
     img = img.astype(np.float32)
     return img
 
@@ -22,14 +27,14 @@ class Tsfm:
         self.sz = sz
 
     def __call__(self, row):
-        green = get_img(row, 'green', self.sz, True)
+        img = get_img(row, self.sz, True)
         target = get_target(row)
-        return green, target
+        return img, target
 
 class TestTsfm:
     def __init__(self, sz):
         self.sz = sz
 
     def __call__(self, row):
-        green = get_img(row, 'green', self.sz, False)
-        return green
+        img = get_img(row, self.sz, False)
+        return img
