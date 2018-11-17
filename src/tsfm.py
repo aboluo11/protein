@@ -1,5 +1,8 @@
 from lightai.core import *
 
+mean = np.array([20.50361 , 13.947072, 13.408824, 21.106398]).reshape((-1, 1, 1))
+std = np.array([38.12811 , 39.742226, 28.598948, 38.173912]).reshape((-1, 1, 1))
+
 def get_img(row, sz, train):
     colors = ['red', 'blue', 'green', 'yellow']
     channels = []
@@ -13,6 +16,7 @@ def get_img(row, sz, train):
         channels.append(channel)
     img = np.stack(channels)
     img = img.astype(np.float32)
+    img = (img-mean)/std
     return img
 
 def get_target(row):
