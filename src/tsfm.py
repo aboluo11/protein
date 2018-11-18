@@ -16,7 +16,6 @@ def get_img(row, sz, train):
         channels.append(channel)
     img = np.stack(channels)
     img = img.astype(np.float32)
-    img = (img-mean)/std
     return img
 
 def get_target(row):
