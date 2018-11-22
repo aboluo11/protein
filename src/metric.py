@@ -10,7 +10,6 @@ class F1:
         """
         predict and target are in batch
         """
-        predict = torch.sigmoid(predict)
         predict = predict > self.threshold
         self.predicts.append(predict)
         self.targets.append(target)
@@ -18,7 +17,7 @@ class F1:
     def res(self):
         predict = torch.cat(self.predicts).float()
         target = torch.cat(self.targets)
-        tp = (predict*target).sum(dim=0)
+        tp = (predict*target).sum(dim=0)  #shape (28,)
         precision = tp/(predict.sum(dim=0) + 1e-8)
         recall = tp/(target.sum(dim=0) + 1e-8)
         f1 = 2*(precision*recall/(precision+recall+1e-8))
