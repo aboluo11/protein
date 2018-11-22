@@ -26,14 +26,15 @@ def get_target(row):
     return res
 
 class Tsfm:
-    def __init__(self, sz, img_tsfm):
+    def __init__(self, sz, img_tsfm=None):
         self.sz = sz
         self.img_tsfm = img_tsfm
 
     def __call__(self, row):
         img = get_img(row, self.sz, True)
         target = get_target(row)
-        img = self.img_tsfm(img)
+        if self.img_tsfm:
+            img = self.img_tsfm(img)
         return img, target
 
 class TestTsfm:
