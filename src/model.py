@@ -11,6 +11,7 @@ class Model(nn.Module):
 
     def forward(self, x):
         x = x.half()
+        x = x.permute(2,0,1)
         x = (x-self.mean)/self.std
         x = self.base(x)
         x = self.avgpool(x)
