@@ -14,7 +14,7 @@ def get_img(row, sz, train):
             img_path = f'inputs/{sz}_test/{name}'
         channel = cv2.imread(img_path, -1)
         channels.append(channel)
-    img = np.stack(channels)
+    img = np.stack(channels, axis=-1)
     img = img.astype(np.float32)
     return img
 
@@ -60,7 +60,7 @@ class LR_Flip:
         self.p = p
     def __call__(self, img):
         if np.random.rand() < self.p:
-            img = img[:,:,::-1].copy()
+            img = img[:,::-1,:].copy()
         return img
 
 
@@ -69,5 +69,5 @@ class VerticalFlip:
         self.p = p
     def __call__(self, img):
         if np.random.rand() < self.p:
-            img = img[:,::-1,:].copy()
+            img = img[::-1,:,:].copy()
         return img
