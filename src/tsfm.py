@@ -15,7 +15,7 @@ def get_img(row, sz, train):
         channel = cv2.imread(img_path, -1)
         channels.append(channel)
     img = np.stack(channels, axis=-1)
-    img = img.astype(np.float32)
+    # img = img.astype(np.float16)
     return img
 
 def get_target(row):
