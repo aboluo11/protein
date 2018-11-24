@@ -34,7 +34,7 @@ class Tsfm:
         img = get_img(row, self.sz, True)
         target = get_target(row)
         if self.img_tsfm:
-            img = self.img_tsfm(img)
+            img = self.img_tsfm(image=img)['image']
         return img, target
 
 class TestTsfm:
@@ -43,31 +43,4 @@ class TestTsfm:
 
     def __call__(self, row):
         img = get_img(row, self.sz, False)
-        return img
-
-
-class ComposeTsfms:
-    def __init__(self, tsfms):
-        self.tsfms = tsfms
-    def __call__(self, img):
-        for tsfm in self.tsfms:
-            img = tsfm(img)
-        return img
-
-
-class LR_Flip:
-    def __init__(self, p):
-        self.p = p
-    def __call__(self, img):
-        if np.random.rand() < self.p:
-            img = img[:,::-1,:].copy()
-        return img
-
-
-class VerticalFlip:
-    def __init__(self, p):
-        self.p = p
-    def __call__(self, img):
-        if np.random.rand() < self.p:
-            img = img[::-1,:,:].copy()
         return img
