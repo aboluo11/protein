@@ -26,4 +26,4 @@ class F1:
         scores = torch.stack(scores)
         self.predicts = []
         self.targets = []
-        return scores.max(dim=0).mean().item()
+        return scores.max(dim=0)[0].mean().item()
