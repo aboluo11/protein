@@ -5,10 +5,8 @@ class Model(nn.Module):
     def __init__(self, sz, pretrained=True):
         super().__init__()
         self.base = self.get_base(pretrained)
-        self.avgpool = nn.AdaptiveAvgPool2d(8)
-        self.fc1 = nn.Linear(512 * 8 * 8, 128)
-        self.fc_bn = nn.BatchNorm1d(128)
-        self.fc2 = nn.Linear(128, 28)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(512, 28)
         self.mean = T(np.array([20.50361 , 13.947072, 13.408824, 21.106398]).reshape((-1, 1, 1))).half()
         self.std = T(np.array([38.12811 , 39.742226, 28.598948, 38.173912]).reshape((-1, 1, 1))).half()
 
@@ -19,9 +17,7 @@ class Model(nn.Module):
         x = self.base(x)
         x = self.avgpool(x)
         x = x.view(x.shape[0], -1)
-        x = self.fc1(x)
-        x = self.fc_bn(torch.relu(x))
-        x = self.fc2(x)
+        x = self.fc(x)
         x = torch.sigmoid(x)
         return x
 
