@@ -22,8 +22,8 @@ class F1:
             precision = tp/(predict.sum(dim=0) + 1e-8)
             recall = tp/(target.sum(dim=0) + 1e-8)
             f1 = 2*(precision*recall/(precision+recall+1e-8))
-            scores.append(f1.mean())
+            scores.append(f1)
         scores = torch.stack(scores)
         self.predicts = []
         self.targets = []
-        return scores.max().item()
+        return scores.max(dim=0).mean().item()
