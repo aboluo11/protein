@@ -24,6 +24,8 @@ class F1:
             precision = tp/(predict.sum(dim=0) + 1e-8)
             recall = tp/(target.sum(dim=0) + 1e-8)
             f1 = 2*(precision*recall/(precision+recall+1e-8))
+            self.predicts = []
+            self.targets = []
             return f1.mean().item()
         for threshold in np.linspace(0, 1, num=100, endpoint=False):
             predict = (origin_predict > threshold).float()
