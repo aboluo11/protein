@@ -5,17 +5,26 @@ class F1:
         self.predicts = []
         self.targets = []
 
-    def __call__(self, predict, target):
+    def __call__(self, predict, target, threshold=0.5):
         """
         predict and target are in batch
         """
         self.predicts.append(predict)
         self.targets.append(target)
+        self.threshold = threshold
 
     def res(self):
         origin_predict = torch.cat(self.predicts)
         target = torch.cat(self.targets)
         scores = []
+        if self.threshold:
+            predict = (origin_predict > self.threshold).float()
+            predict = (origin_predict > threshold).float()
+            tp = (predict*target).sum(dim=0)  #shape (28,)
+            precision = tp/(predict.sum(dim=0) + 1e-8)
+            recall = tp/(target.sum(dim=0) + 1e-8)
+            f1 = 2*(precision*recall/(precision+recall+1e-8))
+            return f1.mean().item()
         for threshold in np.linspace(0, 1, num=100, endpoint=False):
             predict = (origin_predict > threshold).float()
             tp = (predict*target).sum(dim=0)  #shape (28,)
