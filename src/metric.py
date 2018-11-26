@@ -1,17 +1,17 @@
 from lightai.core import *
 
 class F1:
-    def __init__(self):
+    def __init__(self, threshold=0.5):
         self.predicts = []
         self.targets = []
+        self.threshold = threshold
 
-    def __call__(self, predict, target, threshold=0.5):
+    def __call__(self, predict, target):
         """
         predict and target are in batch
         """
         self.predicts.append(predict)
         self.targets.append(target)
-        self.threshold = threshold
 
     def res(self):
         origin_predict = torch.cat(self.predicts)
