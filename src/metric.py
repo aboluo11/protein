@@ -19,7 +19,7 @@ class F1:
         scores = []
         if self.threshold:
             predict = (origin_predict > self.threshold).float()
-            predict = (origin_predict > threshold).float()
+            predict = (origin_predict > self.threshold).float()
             tp = (predict*target).sum(dim=0)  #shape (28,)
             precision = tp/(predict.sum(dim=0) + 1e-8)
             recall = tp/(target.sum(dim=0) + 1e-8)
