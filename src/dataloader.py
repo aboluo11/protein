@@ -8,6 +8,8 @@ def worker_loop(dss, ds_idx_q, row_idx_q, out_q):
     while True:
         ds_idx = ds_idx_q.get()
         row_idx = row_idx_q.get()
+        if row_idx is None:
+            return
         batch = default_collate([dss[ds_i][row_i] for ds_i, row_i in zip(ds_idx, row_idx)])
         out_q.put(batch)
 
@@ -62,3 +64,6 @@ class MyDataLoader:
 
     def __len__(self):
         return 28*self.iters_per_epoch//self.bs
+
+    def __del__(self):
+        self.row_idx_q.put(None)
