@@ -1,7 +1,8 @@
 from lightai.core import *
 
-mean = np.array([20.50361 , 13.947072, 13.408824, 21.106398]).reshape((-1, 1, 1))
-std = np.array([38.12811 , 39.742226, 28.598948, 38.173912]).reshape((-1, 1, 1))
+mean = np.array([20.50361, 13.947072, 13.408824, 21.106398]).reshape((-1, 1, 1))
+std = np.array([38.12811, 39.742226, 28.598948, 38.173912]).reshape((-1, 1, 1))
+
 
 def get_img(row, sz, train):
     colors = ['yellow', 'red', 'green', 'blue']
@@ -18,12 +19,14 @@ def get_img(row, sz, train):
     # img = img.astype(np.float16)
     return img
 
+
 def get_target(row):
     targets = row['Target'].split()
     targets = [int(t) for t in targets]
     res = np.zeros(28, dtype=np.float32)
     res[targets] = 1
     return res
+
 
 class Tsfm:
     def __init__(self, sz, img_tsfm=None):
@@ -36,6 +39,7 @@ class Tsfm:
         if self.img_tsfm:
             img = self.img_tsfm(image=img)['image']
         return img, target
+
 
 class TestTsfm:
     def __init__(self, sz):

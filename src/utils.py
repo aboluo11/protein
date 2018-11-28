@@ -1,5 +1,8 @@
 from lightai.core import *
 
+from src.dataset import Dataset
+
+
 def get_mean():
     percentage = 1
     means = []
