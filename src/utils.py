@@ -38,13 +38,31 @@ def get_idx_from_target(df, target):
     return res
 
 
-def get_sample_weight(df):
+def get_cls_weight(df):
     cls_sz = []
     for i in range(28):
         sz = len(get_idx_from_target(df, i))
         cls_sz.append(sz)
-    weight = 1/np.array(cls_sz)
+    weight = 1000.0/np.array(cls_sz)
     return weight
+
+
+def assign_weight(df):
+    df['weight'] = 0.0
+    weights = get_cls_weight(df)
+    for i, row in progress_bar(df.iterrows(), total=len(df)):
+        targets = row['Target'].split()
+        weight = 0
+        for t in targets:
+            weight += weights[int(t)]
+        df.loc[i, 'weight'] = weight
+
+
+def create_k_fold(k, df):
+    df['fold'] = 0.0
+    df = df.iloc[np.random.permutation(len(df))]
+    df['fold'] = (list(range(k))*(len(df)//k+1))[:len(df)]
+    return df
 
 
 def make_rgb(img):
