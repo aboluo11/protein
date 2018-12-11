@@ -44,8 +44,16 @@ class TestTsfm:
 
     def __call__(self, row):
         img = get_img(row, self.sz, False)
-        imgs = [img]
-        imgs.append(img[::-1].copy())
-        imgs.append(img[:, ::-1].copy())
-        imgs.append(img[::-1, ::-1].copy())
+        imgs = []
+        for transpose in [0, 1]:
+            for h_flip in [0, 1]:
+                for v_flip in [0, 1]:
+                    tta = img
+                    if transpose:
+                        tta = np.transpose(tta, axes=(1, 0, 2))
+                    if h_flip:
+                        tta = tta[:, ::-1]
+                    if v_flip:
+                        tta = tta[::-1]
+                    imgs.append(tta.copy())
         return imgs

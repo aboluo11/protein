@@ -1,5 +1,6 @@
 from lightai.core import *
 
+
 class F1:
     def __init__(self, threshold=0.5):
         self.predicts = []
@@ -14,12 +15,12 @@ class F1:
         self.targets.append(target)
 
     def res(self):
-        origin_predict = torch.cat(self.predicts)
+        origin_predict = torch.cat(self.predicts).sigmoid()
         target = torch.cat(self.targets)
         scores = []
         if self.threshold:
             predict = (origin_predict > self.threshold).float()
-            tp = (predict*target).sum(dim=0)  #shape (28,)
+            tp = (predict*target).sum(dim=0)  # shape (28,)
             precision = tp/(predict.sum(dim=0) + 1e-8)
             recall = tp/(target.sum(dim=0) + 1e-8)
             f1 = 2*(precision*recall/(precision+recall+1e-8))
@@ -28,7 +29,7 @@ class F1:
             return f1.mean().item()
         for threshold in np.linspace(0, 1, num=100, endpoint=False):
             predict = (origin_predict > threshold).float()
-            tp = (predict*target).sum(dim=0)  #shape (28,)
+            tp = (predict*target).sum(dim=0)  # shape (28,)
             precision = tp/(predict.sum(dim=0) + 1e-8)
             recall = tp/(target.sum(dim=0) + 1e-8)
             f1 = 2*(precision*recall/(precision+recall+1e-8))

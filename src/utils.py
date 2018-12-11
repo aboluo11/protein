@@ -29,11 +29,11 @@ def get_std(mean, dl):
 
 def get_idx_from_target(df, target):
     res = []
-    for i, row in enumerate(iter(df['Target'])):
-        targets = row.split()
+    for idx, targets in zip(df.index, df['Target']):
+        targets = targets.split()
         for each in targets:
             if int(each) == target:
-                res.append(i)
+                res.append(idx)
                 break
     return res
 
@@ -43,19 +43,21 @@ def get_cls_weight(df):
     for i in range(28):
         sz = len(get_idx_from_target(df, i))
         cls_sz.append(sz)
-    weight = 1000.0/np.array(cls_sz)
+    cls_sz = np.array(cls_sz)
+    weight = 1000.0*np.log(cls_sz)/cls_sz
     return weight
 
 
 def assign_weight(df):
     df['weight'] = 0.0
     weights = get_cls_weight(df)
-    for i, row in progress_bar(df.iterrows(), total=len(df)):
+    for idx, row in df.iterrows():
         targets = row['Target'].split()
-        weight = 0
-        for t in targets:
-            weight += weights[int(t)]
-        df.loc[i, 'weight'] = weight
+        # weight = 0
+        # for t in targets:
+        #     weight += weights[int(t)]
+        weight = max([weights[int(t)] for t in targets])
+        df.loc[idx, 'weight'] = weight
 
 
 def create_k_fold(k, df):
@@ -65,10 +67,54 @@ def create_k_fold(k, df):
     return df
 
 
-def make_rgb(img):
-    img = img.astype(np.float32)
-    img[:, :, 1] += img[:, :, 0]/2
-    img[:, :, 2] += img[:, :, 0]/2
-    img = img[:, :, 1:]
-    img = img/img.max()
+def make_rgb(img_id):
+    fold_path = Path('inputs/512_train')
+    colors = ['red', 'green', 'blue']
+    channels = []
+    for color in colors:
+        channel = cv2.imread(str(fold_path/f'{img_id}_{color}.png'), -1)
+        channels.append(channel)
+    img = np.stack(channels, axis=-1)
     return img
+
+
+def val_score_wrt_threshold(model, val_dl):
+    model.eval()
+    with torch.no_grad():
+        predicts = []
+        targets = []
+        for x, target in val_dl:
+            x, target = x.cuda(), target.cuda()
+            predict = model(x)
+            predict = predict.sigmoid()
+            predict = predict.float()
+            predicts.append(predict)
+            targets.append(target)
+        origin_predict = torch.cat(predicts)
+        target = torch.cat(targets)
+        scores = []
+        thresholds = np.linspace(0, 1, num=100, endpoint=False)
+        for threshold in thresholds:
+            predict = (origin_predict > threshold).float()
+            tp = (predict*target).sum(dim=0)  # shape (28,)
+            precision = tp/(predict.sum(dim=0) + 1e-8)
+            recall = tp/(target.sum(dim=0) + 1e-8)
+            f1 = 2*(precision*recall/(precision+recall+1e-8))
+            scores.append(f1)
+        scores = torch.stack(scores)
+        return scores
+
+
+def resize(sz, src, dst):
+    """
+    src, dst: fold path
+    """
+    src = Path(src)
+    dst = Path(dst)
+
+    def _resize(inp_img_path):
+        img = cv2.imread(str(inp_img_path), 0)
+        img = cv2.resize(img, (sz, sz))
+        cv2.imwrite(str(dst/inp_img_path.parts[-1].replace('jpg', 'png')), img)
+    with ProcessPoolExecutor(6) as e:
+        e.map(_resize, src.iterdir())

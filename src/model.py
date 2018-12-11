@@ -10,6 +10,7 @@ std = T(np.array([13.1594, 17.5587, 5.0485, 36.4777]).reshape(
 class Model(nn.Module):
     def __init__(self, base=torchvision.models.resnet18, pretrained=True):
         super().__init__()
+        self.inp_bn = nn.BatchNorm2d(4)
         self.base = self.get_base(base, pretrained)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(512, 28)
@@ -17,12 +18,13 @@ class Model(nn.Module):
     def forward(self, x):
         x = x.half()
         x = x.permute(0, 3, 1, 2)
-        x = (x-mean)/std
+        # x = (x-mean)/std
+        x = self.inp_bn(x)
         x = self.base(x)
         x = self.avgpool(x)
         x = x.view(x.shape[0], -1)
         x = self.fc(x)
-        x = torch.sigmoid(x)
+        # x = torch.sigmoid(x)
         return x
 
     def get_base(self, base, pretrained):
