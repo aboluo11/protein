@@ -44,7 +44,8 @@ def get_cls_weight(df):
         sz = len(get_idx_from_target(df, i))
         cls_sz.append(sz)
     cls_sz = np.array(cls_sz)
-    weight = 1000.0*np.log(cls_sz)/cls_sz
+    weight = np.log(cls_sz)/cls_sz
+    weight = weight/weight.max()
     return weight
 
 
@@ -53,11 +54,12 @@ def assign_weight(df):
     weights = get_cls_weight(df)
     for idx, row in df.iterrows():
         targets = row['Target'].split()
-        # weight = 0
-        # for t in targets:
-        #     weight += weights[int(t)]
-        weight = max([weights[int(t)] for t in targets])
+        weight = 0
+        for t in targets:
+            weight += weights[int(t)]
+        # weight = max([weights[int(t)] for t in targets])
         df.loc[idx, 'weight'] = weight
+    df.weight = df.weight / df.weight.max()
 
 
 def create_k_fold(k, df):
@@ -67,8 +69,8 @@ def create_k_fold(k, df):
     return df
 
 
-def make_rgb(img_id):
-    fold_path = Path('inputs/512_train')
+def make_rgb(img_id, img_fold):
+    fold_path = Path(img_fold)
     colors = ['red', 'green', 'blue']
     channels = []
     for color in colors:
@@ -86,8 +88,8 @@ def val_score_wrt_threshold(model, val_dl):
         for x, target in val_dl:
             x, target = x.cuda(), target.cuda()
             predict = model(x)
-            predict = predict.sigmoid()
             predict = predict.float()
+            predict = predict.sigmoid()
             predicts.append(predict)
             targets.append(target)
         origin_predict = torch.cat(predicts)
@@ -118,3 +120,32 @@ def resize(sz, src, dst):
         cv2.imwrite(str(dst/inp_img_path.parts[-1].replace('jpg', 'png')), img)
     with ProcessPoolExecutor(6) as e:
         e.map(_resize, src.iterdir())
+
+
+def p_tp_vs_tn(model, val_dl):
+    ps_for_tp = []
+    ps_for_tn = []
+    model.eval()
+    with torch.no_grad():
+        for img, target in val_dl:
+            img = img.cuda()
+            logit = model(img)
+            p = logit.sigmoid().cpu().float()
+            p_for_tp = p.masked_select(target == 1)
+            p_for_tn = p.masked_select(target == 0)
+            ps_for_tp.append(p_for_tp)
+            ps_for_tn.append(p_for_tn)
+        ps_for_tp = torch.cat(ps_for_tp).numpy()
+        ps_for_tn = torch.cat(ps_for_tn).numpy()
+    return ps_for_tp, ps_for_tn
+
+
+def p_wrt_test(model, test_dl):
+    ps = []
+    with torch.no_grad():
+        model.eval()
+        for img in test_dl:
+            img = img.cuda()
+            p = model(img).sigmoid().view(-1).cpu().float()
+            ps.append(p)
+    return torch.cat(ps).numpy()

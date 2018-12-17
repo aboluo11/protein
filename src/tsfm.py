@@ -26,24 +26,34 @@ def get_target(row):
 
 
 class Tsfm:
-    def __init__(self, sz, img_tsfm=None):
+    def __init__(self, sz, fair_img_tsfm=None, weighted_img_tsfm=None):
         self.sz = sz
-        self.img_tsfm = img_tsfm
+        self.fair_img_tsfm = fair_img_tsfm
+        self.weighted_img_tsfm = weighted_img_tsfm
 
     def __call__(self, row):
         img = get_img(row, self.sz, True)
         target = get_target(row)
-        if self.img_tsfm:
-            img = self.img_tsfm(image=img)['image']
+        if self.fair_img_tsfm:
+            img = self.fair_img_tsfm(image=img)['image']
+        if self.weighted_img_tsfm:
+            weight = row['weight']
+            p = weight*0.25 + 0.5
+            if np.random.rand() < p:
+                img = self.weighted_img_tsfm(image=img)['image']
+            # img = self.weighted_img_tsfm(image=img)['image']
         return img, target
 
 
 class TestTsfm:
-    def __init__(self, sz):
+    def __init__(self, sz, tta=True):
         self.sz = sz
+        self.tta = tta
 
     def __call__(self, row):
         img = get_img(row, self.sz, False)
+        if not self.tta:
+            return img
         imgs = []
         for transpose in [0, 1]:
             for h_flip in [0, 1]:
