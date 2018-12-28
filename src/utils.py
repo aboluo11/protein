@@ -1,4 +1,5 @@
 from lightai.core import *
+from .metric import F1
 
 
 def get_mean(dl):
@@ -49,9 +50,10 @@ def get_cls_weight(df):
     return weight
 
 
-def assign_weight(df):
+def assign_weight(df, weights=None):
     df['weight'] = 0.0
-    weights = get_cls_weight(df)
+    if weights is None:
+        weights = get_cls_weight(df)
     for idx, row in df.iterrows():
         targets = row['Target'].split()
         weight = 0
@@ -80,31 +82,31 @@ def make_rgb(img_id, img_fold):
     return img
 
 
-def val_score_wrt_threshold(model, val_dl):
-    model.eval()
+def score_wrt_threshold_per_cls(logits, targets):
+    scores = []
+    thresholds = np.linspace(0, 1, num=100, endpoint=False)
+    for threshold in thresholds:
+        predict = (logits.sigmoid() > threshold).float()
+        tp = (predict*targets).sum(dim=0)  # shape (28,)
+        precision = tp/(predict.sum(dim=0) + 1e-8)
+        recall = tp/(targets.sum(dim=0) + 1e-8)
+        f1 = 2*(precision*recall/(precision+recall+1e-8))
+        scores.append(f1)
+    scores = torch.stack(scores).permute(1, 0).numpy()
+    return scores
+
+
+def score_wrt_threshold(model, val_dl):
+    metrics = [F1(t) for t in np.linspace(0, 1, num=100, endpoint=False)]
     with torch.no_grad():
-        predicts = []
-        targets = []
-        for x, target in val_dl:
-            x, target = x.cuda(), target.cuda()
-            predict = model(x)
-            predict = predict.float()
-            predict = predict.sigmoid()
-            predicts.append(predict)
-            targets.append(target)
-        origin_predict = torch.cat(predicts)
-        target = torch.cat(targets)
-        scores = []
-        thresholds = np.linspace(0, 1, num=100, endpoint=False)
-        for threshold in thresholds:
-            predict = (origin_predict > threshold).float()
-            tp = (predict*target).sum(dim=0)  # shape (28,)
-            precision = tp/(predict.sum(dim=0) + 1e-8)
-            recall = tp/(target.sum(dim=0) + 1e-8)
-            f1 = 2*(precision*recall/(precision+recall+1e-8))
-            scores.append(f1)
-        scores = torch.stack(scores)
-        return scores
+        model.eval()
+        for img, target in val_dl:
+            img, target = img.cuda(
+                non_blocking=True), target.cuda(non_blocking=True)
+            logit = model(img).float()
+            for metric in metrics:
+                metric(logit, target)
+        return np.array([metric.res() for metric in metrics])
 
 
 def resize(sz, src, dst):
@@ -122,22 +124,11 @@ def resize(sz, src, dst):
         e.map(_resize, src.iterdir())
 
 
-def p_tp_vs_tn(model, val_dl):
-    ps_for_tp = []
-    ps_for_tn = []
-    model.eval()
-    with torch.no_grad():
-        for img, target in val_dl:
-            img = img.cuda()
-            logit = model(img)
-            p = logit.sigmoid().cpu().float()
-            p_for_tp = p.masked_select(target == 1)
-            p_for_tn = p.masked_select(target == 0)
-            ps_for_tp.append(p_for_tp)
-            ps_for_tn.append(p_for_tn)
-        ps_for_tp = torch.cat(ps_for_tp).numpy()
-        ps_for_tn = torch.cat(ps_for_tn).numpy()
-    return ps_for_tp, ps_for_tn
+def p_tp_vs_tn(logits, targets):
+    p = logits.sigmoid()
+    p_for_tp = p.masked_select(targets == 1).numpy()
+    p_for_tn = p.masked_select(targets == 0).numpy()
+    return p_for_tp, p_for_tn
 
 
 def p_wrt_test(model, test_dl):
@@ -151,25 +142,88 @@ def p_wrt_test(model, test_dl):
     return torch.cat(ps).numpy()
 
 
-def score_wrt_threshold(model, val_dl):
+def val_vs_test(model, val_dl, test_dl):
+    val_p_tp, val_p_tn = p_tp_vs_tn(model, val_dl)
+    val_p = np.concatenate((val_p_tp, val_p_tn))
+    test_p = p_wrt_test(model, test_dl)
+    plt.figure(figsize=(9, 9))
+    val_p_num = plt.hist(val_p, log=True, bins=30, alpha=0.5, weights=np.ones_like(val_p) /
+                         len(val_p), label='val')[0]
+    test_p_num = plt.hist(test_p, log=True, bins=30, alpha=0.5, weights=np.ones_like(test_p) /
+                          len(test_p), label='test')
+    plt.legend()
+
+
+def tp_vs_tn(logits, targets):
+    p_tp, p_tn = p_tp_vs_tn(logits, targets)
+    plt.figure(figsize=(9, 9))
+    tn_num = plt.hist(p_tn, log=True, bins=30, alpha=0.5)[0]
+    tp_num = plt.hist(p_tp, log=True, bins=30, alpha=0.5)[0]
+    return tp_num, tn_num
+
+
+def c_p_tp_vs_tn(logits, targets):
+    tp_cls = []
+    tn_cls = []
+    for c in range(28):
+        tp = logits[:, c][targets[:, c] == 1]
+        tn = logits[:, c][targets[:, c] == 0]
+        tp_cls.append(tp.numpy())
+        tn_cls.append(tn.numpy())
+    return tp_cls, tn_cls
+
+
+def c_tp_vs_tn(logits, targets):
+    tp_cls, tn_cls = c_p_tp_vs_tn(logits, targets)
+    _, axes = plt.subplots(28, 1, figsize=(6, 6*28))
+    for c, (ax, tp, tn) in enumerate(zip(axes, tp_cls, tn_cls)):
+        tptn = np.concatenate([tp, tn])
+        bins = np.linspace(tptn.min(), tptn.max(), 50)
+        tn_num = ax.hist(tn, bins, log=True, label='tn', alpha=0.5)[0]
+        tp_num = ax.hist(tp, bins, log=True, label='tp', alpha=0.5)[0]
+        ax.legend()
+        ax.set_title(c)
+
+
+def tsfm_contrast(ds, aug):
+    row = 2
+    column = 2
+    img_sz = 8
+    _, axes = plt.subplots(row, column, figsize=(img_sz*column, img_sz*row))
+    for row in axes:
+        i = np.random.randint(0, len(ds))
+        img = ds[i][0]
+        row[0].imshow(img[:, :, :3])
+        auged_img = aug(image=img)['image']
+        row[1].imshow(auged_img[:, :, :3])
+
+
+def mis_classify(logits, targets):
+    logits = logits.sigmoid()
+    fn = logits * targets
+    fp = logits * (1 - targets)
+    return fn, fp
+
+
+def get_logits(model, val_dl):
+    logits = []
+    targets = []
     with torch.no_grad():
         model.eval()
-        predicts = []
-        targets = []
-        scores = []
         for img, target in val_dl:
-            img, target = img.cuda(), target.cuda()
+            img = img.cuda()
             logit = model(img)
-            predict = logit.sigmoid()
-            predicts.append(predict)
+            logits.append(logit)
             targets.append(target)
-        predicts = torch.cat(predicts)
-        targets = torch.cat(targets)
-        for threshold in T(np.linspace(0, 1, num=100, endpoint=False)).half():
-            binaray_predicts = (predicts > threshold).float()
-            tp = (binaray_predicts * targets).sum(dim=0)
-            precision = tp / (binaray_predicts.sum(dim=0) + 1e-8)
-            recall = tp / (targets.sum(dim=0) + 1e-8)
-            f1 = 2*precision*recall/(precision+recall+1e-8)
-            scores.append(f1.mean().item())
-        return np.array(scores)
+    logits = torch.cat(logits).cpu().float()
+    targets = torch.cat(targets)
+    return logits, targets
+
+
+def most_wrong(logits, targets, val_ds):
+    p = logits.sigmoid()
+    wrong = (1-p) * targets + p * (1-targets)
+    wrong = wrong.mean(dim=1)
+    wrong_sorted, perm = torch.sort(wrong, descending=True)
+    val_ds = val_ds[perm]
+    return val_ds
