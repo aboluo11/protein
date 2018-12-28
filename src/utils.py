@@ -149,3 +149,27 @@ def p_wrt_test(model, test_dl):
             p = model(img).sigmoid().view(-1).cpu().float()
             ps.append(p)
     return torch.cat(ps).numpy()
+
+
+def score_wrt_threshold(model, val_dl):
+    with torch.no_grad():
+        model.eval()
+        predicts = []
+        targets = []
+        scores = []
+        for img, target in val_dl:
+            img, target = img.cuda(), target.cuda()
+            logit = model(img)
+            predict = logit.sigmoid()
+            predicts.append(predict)
+            targets.append(target)
+        predicts = torch.cat(predicts)
+        targets = torch.cat(targets)
+        for threshold in T(np.linspace(0, 1, num=100, endpoint=False)).half():
+            binaray_predicts = (predicts > threshold).float()
+            tp = (binaray_predicts * targets).sum(dim=0)
+            precision = tp / (binaray_predicts.sum(dim=0) + 1e-8)
+            recall = tp / (targets.sum(dim=0) + 1e-8)
+            f1 = 2*precision*recall/(precision+recall+1e-8)
+            scores.append(f1.mean().item())
+        return np.array(scores)

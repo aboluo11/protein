@@ -1,6 +1,5 @@
 .*
 !.gitignore
-*.ipynb
 inputs
 *.pyc
 *.xlsx
