@@ -96,17 +96,11 @@ def score_wrt_threshold_per_cls(logits, targets):
     return scores
 
 
-def score_wrt_threshold(model, val_dl):
+def score_wrt_threshold(logits, targets):
     metrics = [F1(t) for t in np.linspace(0, 1, num=100, endpoint=False)]
-    with torch.no_grad():
-        model.eval()
-        for img, target in val_dl:
-            img, target = img.cuda(
-                non_blocking=True), target.cuda(non_blocking=True)
-            logit = model(img).float()
-            for metric in metrics:
-                metric(logit, target)
-        return np.array([metric.res() for metric in metrics])
+    for metric in metrics:
+        metric(logits, targets)
+    return np.array([metric.res() for metric in metrics])
 
 
 def resize(sz, src, dst):
@@ -220,10 +214,11 @@ def get_logits(model, val_dl):
     return logits, targets
 
 
-def most_wrong(logits, targets, val_ds):
+def most_wrong(logits, targets, val_df):
     p = logits.sigmoid()
-    wrong = (1-p) * targets + p * (1-targets)
-    wrong = wrong.mean(dim=1)
+    wrong = (1-p) * targets / targets.sum(dim=1).view(-1, 1)
+    wrong = wrong.sum(dim=1)
     wrong_sorted, perm = torch.sort(wrong, descending=True)
-    val_ds = val_ds[perm]
-    return val_ds
+    wrong_sorted_df = val_df.iloc[perm.numpy()]
+    wrong_sorted_df['wrong'] = wrong_sorted.numpy()
+    return wrong_sorted_df

@@ -18,7 +18,7 @@ class F1:
         origin_predict = torch.cat(self.predicts).sigmoid()
         target = torch.cat(self.targets)
         scores = []
-        if self.threshold:
+        if self.threshold is not None:
             predict = (origin_predict > self.threshold).float()
             tp = (predict*target).sum(dim=0)  # shape (28,)
             precision = tp/(predict.sum(dim=0) + 1e-8)
