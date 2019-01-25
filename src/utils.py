@@ -1,4 +1,5 @@
 from lightai.core import *
+from lightai.torch_core import *
 from .metric import F1
 
 
@@ -39,26 +40,29 @@ def get_idx_from_target(df, target):
     return res
 
 
-def get_cls_weight(df):
+def get_cls_weight(df, alpha):
+    """alpha: degree of oversample"""
     cls_sz = []
     for i in range(28):
         sz = len(get_idx_from_target(df, i))
         cls_sz.append(sz)
     cls_sz = np.array(cls_sz)
-    weight = np.log(cls_sz)/cls_sz
+    weight = np.log(alpha*cls_sz)/cls_sz
     weight = weight/weight.max()
     return weight
 
 
-def assign_weight(df, weights=None):
+def assign_weight(df, alpha=1, weights=None):
     df['weight'] = 0.0
     if weights is None:
-        weights = get_cls_weight(df)
+        weights = get_cls_weight(df, alpha)
     for idx, row in df.iterrows():
         targets = row['Target'].split()
         weight = 0
         for t in targets:
             weight += weights[int(t)]
+        # if len(row.Id) == 36:
+        #     weight *= 1.5
         # weight = max([weights[int(t)] for t in targets])
         df.loc[idx, 'weight'] = weight
     df.weight = df.weight / df.weight.max()

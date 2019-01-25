@@ -1,10 +1,13 @@
+from __future__ import print_function, division, absolute_import
+
+from torch.utils import model_zoo
+import torch.nn as nn
+import math
+from collections import OrderedDict
 from lightai.core import *
-
-
-# mean = T(np.array(
-#     [25.8022, 14.9129, 15.5262, 20.3930]).reshape((-1, 1, 1))).half()
-# std = T(np.array([41.7929, 29.0815, 42.3371, 31.1343]).reshape(
-#     (-1, 1, 1))).half()
+from lightai.torch_core import *
+import types
+# import pretrainedmodels
 
 mean = T(np.array(
     [24.8897, 14.2778, 15.0474, 19.7499]).reshape((-1, 1, 1))).half()
@@ -58,6 +61,31 @@ class AdaptiveConcatPool2d(nn.Module):
 
     def forward(self, x):
         return torch.cat([self.mp(x), self.ap(x)], 1)
+
+
+class Model_1728(nn.Module):
+    def __init__(self, base=torchvision.models.resnet18, pretrained=True):
+        super().__init__()
+        self.base = self.get_base(base, pretrained)
+        self.head = create_head(1024, 28, ps=[0])
+
+    def forward(self, x):
+        x = x.half()
+        x = x.view(-1, *(x.shape[2:]))
+        x = x.permute(0, 3, 1, 2)
+        x = (x-mean)/std
+        x = self.base(x)
+        x = self.head(x)
+        return x
+
+    def get_base(self, base, pretrained):
+        resnet = base(pretrained=pretrained)
+        conv1 = nn.Conv2d(4, 64, kernel_size=(
+            7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        conv1.weight.data[:, :-1] = resnet.conv1.weight.data
+        conv1.weight.data[:, -1] = resnet.conv1.weight.data.mean(dim=1)
+        resnet.conv1 = conv1
+        return nn.Sequential(*list(resnet.children())[:-2])
 
 
 class Model(nn.Module):
